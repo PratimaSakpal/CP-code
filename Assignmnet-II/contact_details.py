@@ -12,25 +12,25 @@ Fields to be extracted:
     - Phone
     - Email
 """
+import re
 import pandas as pd
-import time
 import requests
 from bs4 import BeautifulSoup
-import re
 
 def get_request(link):
     """
     Get response for a link using requests
     """
-    html = requests.get(link)
-    time.sleep(1)
-    return html
+    response = requests.get(link, timeout=2)
+    if response.status_code == 200:
+        return response
+    return None
 
-def get_soup(html):
+def get_soup(response):
     """
     Create soup of response object using beautifulsoup
     """
-    soup = BeautifulSoup(html.text)
+    soup = BeautifulSoup(response.text)
     return soup
 
 def get_contact_details(soup):
@@ -40,7 +40,9 @@ def get_contact_details(soup):
     all_details = []
     school_name = soup.find('div', {'class':'site-name'}).text.strip()
     print(school_name)
-    address = soup.find('div', {'class': 'field location label-above'}).find('div', {'class': 'field-content'}).text
+    address = soup.find(
+        'div', {'class': 'field location label-above'}).find(
+            'div', {'class': 'field-content'}).text
     address = re.sub(r'\s+|\n', ' ', address).replace('Directions', '').strip()
     print(address)
     zip_code = re.findall(r'\d{5,6}$', address)[0]
@@ -76,14 +78,17 @@ def write_into_csv(final_details):
     data_frame.to_csv('School Contact Deatils.csv', index=False)
 
 def main():
+    """
+    Main call
+    """
     final_details = []
     next_page = 0
     while True:
         link = 'https://isd110.org/our-schools/laketown-elementary/staff-directory?amp%3Bpage=1&amp%3Bs=&s=&page=' + str(next_page)
         print(link)
-        html = get_request(link)
-        if html.status_code == 200:
-            soup = get_soup(html)
+        response = get_request(link)
+        if response:
+            soup = get_soup(response)
             details = get_contact_details(soup)
             if not details:
                 break
