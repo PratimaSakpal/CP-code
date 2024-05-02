@@ -30,7 +30,7 @@ def get_soup(response):
     """
     Create soup of response object using beautifulsoup
     """
-    soup = BeautifulSoup(response.text)
+    soup = BeautifulSoup(response.text, features="html.parser")
     return soup
 
 def get_contact_details(soup):
@@ -39,12 +39,10 @@ def get_contact_details(soup):
     """
     all_details = []
     school_name = soup.find('div', {'class':'site-name'}).text.strip()
-    print(school_name)
     address = soup.find(
         'div', {'class': 'field location label-above'}).find(
             'div', {'class': 'field-content'}).text
     address = re.sub(r'\s+|\n', ' ', address).replace('Directions', '').strip()
-    print(address)
     zip_code = re.findall(r'\d{5,6}$', address)[0]
     state = address.replace(zip_code, '').strip().split(' ')[-1]
     contact_name = soup.find_all('div', {'class':'views-row'})
@@ -74,8 +72,11 @@ def write_into_csv(final_details):
     """
     Create and write into CSV file.
     """
+    print('Provide a path to write into csv')
+    path_for_write = input()
     data_frame = pd.DataFrame(final_details)
-    data_frame.to_csv('School Contact Deatils.csv', index=False)
+    data_frame.to_csv(path_for_write + '/School Contact Deatils.csv', index=False)
+    print('CSV file is create on "' + path_for_write + '/School Contact Deatils.csv"')
 
 def main():
     """
@@ -85,7 +86,6 @@ def main():
     next_page = 0
     while True:
         link = 'https://isd110.org/our-schools/laketown-elementary/staff-directory?amp%3Bpage=1&amp%3Bs=&s=&page=' + str(next_page)
-        print(link)
         response = get_request(link)
         if response:
             soup = get_soup(response)
@@ -97,8 +97,8 @@ def main():
         else:
             print('Link is not working or blocked.')
             break
+        print('Data crawled for page ' + str(next_page))
     write_into_csv(final_details)
 
 if __name__ == '__main__':
-    
     main()
