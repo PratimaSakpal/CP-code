@@ -1,12 +1,23 @@
+"""
+Description: Script to get contact details of School.
+Link: 'https://nevadaepro.com/bso/view/search/external/advancedSearchBid.xhtml?openBids=true'
+Fields to be extracted:
+    - Bid Solicitation
+    - Buyer
+    - Description
+    - Bid Opening Date
+    - Navigate to the individual webpage by clicking on bid solicitation number. Extract all header information in dictionary format till Bill-to Address. 
+    - Download the corresponding file attachments for each record. There can be multiple files as well.
+"""
+import time
+import re
+import json
+import warnings
 import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-import time
-import re
-import json
-import warnings
 warnings.filterwarnings("ignore")
 
 LINK = 'https://nevadaepro.com/bso/view/search/external/advancedSearchBid.xhtml?openBids=true'
@@ -28,7 +39,7 @@ def get_soup(response):
     """
     try:
         soup = BeautifulSoup(response.text, "html.parser")
-    except:
+    except AttributeError:
         soup = BeautifulSoup(response.page_source, "html.parser")
     return soup
 
@@ -146,7 +157,7 @@ def get_bid_details(soup):
     path_for_write = input()
     with open(path_for_write + "\\Bid Details.json", "w") as json_file:
         json.dump(all_data, json_file)
-    print('CSV file is create on "' + path_for_write + '\Bid Details.json"')
+    print('CSV file is create on "' + path_for_write + '\\Bid Details.json"')
 
 def main():
     """
