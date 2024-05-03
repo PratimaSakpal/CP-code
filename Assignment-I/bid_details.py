@@ -86,7 +86,7 @@ def download_attachments(driver, all_tds):
     file_attachments = [f.text.strip() for f in file_attachments if not f.text.isdigit()]
     files = driver.find_elements(By.CLASS_NAME, 'link-01')
     for f in files:
-        if f.text.strip() in file_attachments and 'Form' in f.text.strip():
+        if f.text.strip() in file_attachments and 'Form' not in f.text.strip():
             f.click()
             time.sleep(0.5)
 
