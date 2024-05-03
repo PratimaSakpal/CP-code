@@ -29,7 +29,47 @@ def get_soup(response):
     except:
         soup = BeautifulSoup(response.page_source, features="html.parser")
     return soup
-    
+
+def get_item_details(item_soup):
+    item_list = []
+    item_head = item_soup.find_all('tr', {'class':'tableStripe-02'})
+    tbodys = item_soup.find_all('tr', {'class':'tableStripe-01'})
+    nigp_codes = []
+    for t in tbodys:
+        if t.find('tbody') and t.find('tbody').find_all('td')[0].text.strip() == 'NIGP Code:':
+            nigp_codes.append(t.find('tbody').find_all('td')[1].text.strip())
+    count = 0
+    for index, t in enumerate(tbodys):
+        item_dict = {}
+        try:
+            tds = t.find_all('td', {'class':'tableText-01 whcmFix'})
+            if tds[0].text.strip() == 'Qty':
+                item_dict['NIGP Code'] = nigp_codes[count]
+                item_num = re.sub(r'\s\s+', ' ', item_head[count].find('td', {'class':'t-head-01'}).text.strip()).split(':')
+                item_dict['item #'] = item_num[0].strip()
+                item_dict['item title'] = item_num[1].strip()
+                tds = t.find_all('td', {'class':'tableText-01 whcmFix'})
+                for index, td in enumerate(tds[:4]):
+                    item_dict[td.text.strip()] = tds[index+4].text.strip()
+                count += 1
+        except IndexError:
+            pass
+        if item_dict:
+            item_list.append(item_dict)
+    return item_list
+
+def download_attachments(driver, all_tds):
+    file_attachments = []
+    for al in all_tds:
+        if 'File Attachments:' in al.text:
+            file_attachments = al.find_all_next('a')   
+    file_attachments = [f.strip() for f in file_attachments]
+
+    files = driver.find_elements(By.CLASS_NAME, 'link-01')
+    for f in files:
+        if f.text.strip() in file_attachments:
+            f.click()
+
 def get_bid_details(soup):
     header = soup.find(
         'thead', {'id':'bidSearchResultsForm:bidResultId_head'}).find('tr').find_all('th')
@@ -47,12 +87,15 @@ def get_bid_details(soup):
                 new_dict[header[index]] = data.text.strip()
         bid_num = new_dict['Bid Solicitation #']
         bid_link = 'https://nevadaepro.com/bso/external/bidDetail.sdo?docId='+bid_num+'&external=true&parentUrl=close'
+        print(bid_link)
         prefs = {"download.default_directory" : "E:\\attachment\\" + bid_num}
         options.add_experimental_option("prefs",prefs)
         driver = webdriver.Chrome(options=options)
         driver.get(bid_link)
         inner_soup = get_soup(driver)
-        
+        item_list = []
+        item_details = get_item_details(inner_soup)
+        item_list.extend(item_details)
         all_tds = inner_soup.find_all('td', {'class':'t-head-01'})
         count = 0
         for td in all_tds:
@@ -63,17 +106,25 @@ def get_bid_details(soup):
             new_dict[inner_header] = data.strip()
             if inner_header == 'Bill-to Address':
                 break
-        attachments = driver.find_element(By.XPATH, '/html/body/form/table/tbody/tr/td/table/tbody/tr[3]/td/table/tbody/tr['+str(count+2)+']')
-        files = attachments.find_elements(By.CLASS_NAME, 'link-01')
-        for file in files:
-            file.click()
+        download_attachments(driver, all_tds)
+        
+        bottom = driver.find_elements(By.XPATH, '/html/body/form/table/tbody/tr/td/table/tbody/tr[4]/td/table[6]/tbody/tr[2]/td/table/tbody')
+        for b in bottom:
+            pages = b.find_elements(By.CLASS_NAME, 'link-01')
+            for page in pages:
+                page.click()
+                item_soup = BeautifulSoup(driver.page_source)
+                all_tds = item_soup.find_all('td', {'class':'t-head-01'})
+                download_attachments(driver, all_tds)
+                item_details = get_item_details(item_soup)
+                item_list.extend(item_details)
+        new_dict['Item Information'] = item_list
         driver.close()
         print(new_dict)
         input()
-        
-        # all_data.append(new_dict)
 
 if __name__ == '__main__':
     response = get_request(LINK)
     soup = get_soup(response)
     get_bid_details(soup)
+
