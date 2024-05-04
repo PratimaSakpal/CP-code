@@ -102,7 +102,7 @@ def get_bid_details(soup):
     table = soup.find(
         'tbody', {'id':'bidSearchResultsForm:bidResultId_data'}).find_all('tr')
 
-    for tab in table[:1]:
+    for tab in table:
         datas = tab.find_all('td')
         new_dict = {}
         for index, data in enumerate(datas):
